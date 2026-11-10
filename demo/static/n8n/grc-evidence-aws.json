@@ -1,0 +1,248 @@
+{
+  "name": "GRC evidence: AWS IAM",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "8f780c76-6acd-5821-b46f-96c1eb765368",
+      "name": "Every day at 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "16475a43-8115-50a0-a9d4-36ce7133d3b1",
+              "name": "iam_url",
+              "value": "https://iam.amazonaws.com",
+              "type": "string"
+            },
+            {
+              "id": "4261fb4e-e564-5a23-bc97-88db50c7ae11",
+              "name": "account",
+              "value": "your-account-name",
+              "type": "string"
+            },
+            {
+              "id": "946df8a9-ae73-569f-a27d-98ae610807da",
+              "name": "grc_url",
+              "value": "https://grc.yourcompany.example",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ae0a700-4cae-5116-8042-88b07fc89bde",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "EDIT THESE VALUES. grc_url is the address of your GRC platform.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.iam_url }}/?Action=GenerateCredentialReport&Version=2010-05-08",
+        "options": {},
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "aws",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "7751a42a-ed1f-5fa5-93d0-2574fad36de8",
+      "name": "Generate credential report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "id": "78c39084-0600-5ef8-8aa9-cd4b80f75143",
+      "name": "Wait for the report",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        300
+      ],
+      "webhookId": "949ea727-68b4-5b58-84de-63d374cf6fb5"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.iam_url }}/?Action=GetCredentialReport&Version=2010-05-08",
+        "options": {},
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "aws",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "9246660b-1409-50e0-99ea-7414cd168632",
+      "name": "Get credential report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The report arrives base64-encoded inside the response (JSON or XML). Keep only what the checks test.\nconst find = (o) => { if (!o || typeof o !== 'object') return null; if (typeof o.Content === 'string') return o.Content; for (const k of Object.keys(o)) { const r = find(o[k]); if (r) return r; } return null; };\nconst raw = $input.first().json;\nlet b64 = find(raw);\nif (!b64) { const m = JSON.stringify(raw).match(/<Content>([^<]+)<\\/Content>/); b64 = m && m[1]; }\nif (!b64) throw new Error('No credential report in the AWS response. If the report was still being generated, run again.');\nconst lines = Buffer.from(b64, 'base64').toString('utf8').trim().split('\\n');\nconst head = lines.shift().split(',');\nconst now = Date.now();\nconst age = (v) => (!v || ['N/A', 'not_supported', 'no_information'].includes(v)) ? null : Math.floor((now - Date.parse(v)) / 86400000);\nconst items = lines.map(l => { const c = l.split(','); const r = Object.fromEntries(head.map((h, i) => [h, c[i]]));\n  const root = r.user === '<root_account>';\n  const ages = [1, 2].filter(n => r['access_key_' + n + '_active'] === 'true').map(n => age(r['access_key_' + n + '_last_rotated'])).filter(a => a !== null);\n  return { user: r.user, is_root: root, password_enabled: !root && r.password_enabled === 'true', mfa_active: r.mfa_active === 'true', has_active_key: ages.length > 0, oldest_key_age_days: ages.length ? Math.max(...ages) : null }; });\nreturn [{ json: { checks: ['aws_iam_user_mfa', 'aws_root_mfa', 'aws_access_key_age'], source_ref: 'AWS account ' + $('Settings').first().json.account + ' (n8n)', items } }];"
+      },
+      "id": "21f3fd29-cf61-59cd-a3fc-b8a1148f7a2e",
+      "name": "Shape users",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.grc_url }}/api/integrations/collect",
+        "options": {},
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "74592e47-9311-5263-8dac-adef99c02fa2",
+      "name": "Send users to GRC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## GRC evidence: AWS IAM\n1. Edit **Settings**.\n2. On the two AWS nodes choose an **AWS** credential for an IAM user or role that has only `iam:GenerateCredentialReport` and `iam:GetCredentialReport`.\n3. On *Send users to GRC* choose a **Header Auth** credential: Name `Authorization`, Value `Bearer <GRC API token>`.\n4. Import and run one copy of this workflow per AWS account.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "9be16725-e370-5142-9b01-800a49f4764d",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Every day at 06:00": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Generate credential report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate credential report": {
+      "main": [
+        [
+          {
+            "node": "Wait for the report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for the report": {
+      "main": [
+        [
+          {
+            "node": "Get credential report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get credential report": {
+      "main": [
+        [
+          {
+            "node": "Shape users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape users": {
+      "main": [
+        [
+          {
+            "node": "Send users to GRC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

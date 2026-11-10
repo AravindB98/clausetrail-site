@@ -1,0 +1,144 @@
+{
+  "name": "GRC alerts: findings to Slack or Teams",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "grc-finding",
+        "options": {}
+      },
+      "id": "7b0b5e0d-44ec-5051-91c3-07fa49d585ac",
+      "name": "Finding webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "366dc285-b63e-5c08-b6cc-373d543d2b2a"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4c1f3178-7e1d-5755-98d0-9d07ce2fcfb0",
+              "name": "chat_webhook_url",
+              "value": "https://hooks.slack.com/services/REPLACE/ME",
+              "type": "string"
+            },
+            {
+              "id": "946df8a9-ae73-569f-a27d-98ae610807da",
+              "name": "grc_url",
+              "value": "https://grc.yourcompany.example",
+              "type": "string"
+            },
+            {
+              "id": "ac95dd5e-5a9f-56ef-995e-5bdb876309bd",
+              "name": "minimum_severity",
+              "value": "High",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ae0a700-4cae-5116-8042-88b07fc89bde",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "EDIT THESE VALUES. grc_url is the address of your GRC platform.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// The GRC platform's 'Call webhook' step sends {event, workflow, entity, record}. Personal data fields are already removed.\nconst src = $('Finding webhook').first().json;\nconst b = src.body || src;\nconst r = b.record || {};\nconst order = ['Low', 'Medium', 'High', 'Critical'];\nconst min = $('Settings').first().json.minimum_severity || 'High';\nif (order.indexOf(r.severity) < order.indexOf(min)) return [];          // below the threshold: send nothing\nconst link = $('Settings').first().json.grc_url + '/#/e/' + (b.entity || 'finding') + '/' + r.id;\nreturn [{ json: { text: `GRC ${r.severity} finding ${r.code}: ${r.title}\nStatus: ${r.status}. Due: ${r.due_date || 'not set'}.\n${link}` } }];"
+      },
+      "id": "3dd1ee87-e233-524d-ba3b-db5eaad2d070",
+      "name": "Shape message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.chat_webhook_url }}",
+        "options": {},
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "f18b88e9-d339-5923-a5d7-3b7bd064e1ba",
+      "name": "Post to chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## GRC alerts: findings to Slack or Teams\n1. Edit **Settings**: paste a Slack incoming webhook address (or a Teams workflow address that accepts `{\"text\": ...}`) and your GRC address.\n2. Activate this workflow and copy the **Production URL** of the *Finding webhook* node.\n3. In the GRC platform open **Automation**, open *Send new findings to n8n or Zapier (template)*, paste that URL into its *Call webhook* step, switch it on and save.\nOnly findings at or above *minimum_severity* are posted. No personal data is sent.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "2cbab511-7284-5d76-9903-e57ca191e8b9",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Finding webhook": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Shape message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape message": {
+      "main": [
+        [
+          {
+            "node": "Post to chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

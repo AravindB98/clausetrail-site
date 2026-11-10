@@ -1,0 +1,370 @@
+{
+  "name": "GRC evidence: GitHub",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "8f780c76-6acd-5821-b46f-96c1eb765368",
+      "name": "Every day at 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c842f715-5ec2-5e08-9586-d3bb75b0dc89",
+              "name": "github_api",
+              "value": "https://api.github.com",
+              "type": "string"
+            },
+            {
+              "id": "51d48700-4aee-5a5d-a8a5-27a5c1471ac6",
+              "name": "org",
+              "value": "your-organisation",
+              "type": "string"
+            },
+            {
+              "id": "946df8a9-ae73-569f-a27d-98ae610807da",
+              "name": "grc_url",
+              "value": "https://grc.yourcompany.example",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ae0a700-4cae-5116-8042-88b07fc89bde",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "EDIT THESE VALUES. grc_url is the address of your GRC platform.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.github_api }}/orgs/{{ $('Settings').first().json.org }}/members?per_page=100",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "responseIsEmpty",
+              "limitPagesFetched": true,
+              "maxRequests": 100
+            }
+          }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi"
+      },
+      "id": "27c932a2-3a92-51fc-9cdc-1f4eb6d13ee9",
+      "name": "All members",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.github_api }}/orgs/{{ $('Settings').first().json.org }}/members?filter=2fa_disabled&per_page=100",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "responseIsEmpty",
+              "limitPagesFetched": true,
+              "maxRequests": 100
+            }
+          }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi"
+      },
+      "id": "3204e3c7-7cba-50c7-978a-31385f8ff3fd",
+      "name": "Members without 2FA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per member, with only what the check tests.\nconst all = $('All members').all().map(i => i.json.login).filter(Boolean);\nif (!all.length) throw new Error('GitHub returned no members. Check the organisation name and the token\\'s permissions.');\nconst off = new Set($('Members without 2FA').all().map(i => i.json.login).filter(Boolean));\nreturn [{ json: { checks: ['github_org_2fa'], source_ref: 'GitHub organisation ' + $('Settings').first().json.org + ' (n8n)',\n  items: all.map(login => ({ login, two_factor_enabled: !off.has(login) })) } }];"
+      },
+      "id": "50fb05fc-88c3-5f94-b6c9-61f2abc19865",
+      "name": "Shape members",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.grc_url }}/api/integrations/collect",
+        "options": {},
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "28724669-f269-569c-b903-11b5d450c822",
+      "name": "Send members to GRC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.github_api }}/orgs/{{ $('Settings').first().json.org }}/repos?type=all&per_page=100",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "responseIsEmpty",
+              "limitPagesFetched": true,
+              "maxRequests": 100
+            }
+          }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi"
+      },
+      "id": "620c028f-0206-5a42-80e1-c11656b6a5bc",
+      "name": "Repositories",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.github_api }}/repos/{{ $json.full_name }}/branches/{{ $json.default_branch }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi"
+      },
+      "id": "75ae765d-55e7-5d63-815c-9125c2fe0be5",
+      "name": "Default branch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pair each repository with its default branch (same order).\nconst repos = $('Repositories').all().map(i => i.json);\nconst branches = $input.all().map(i => i.json);\nreturn [{ json: { checks: ['github_branch_protection'], source_ref: 'GitHub organisation ' + $('Settings').first().json.org + ' (n8n)',\n  items: repos.map((r, i) => ({ repo: r.full_name, archived: !!r.archived, default_branch_protected: !!(branches[i] && branches[i].protected) })) } }];"
+      },
+      "id": "a1de2aec-0e28-5bab-a72c-911ba0964f22",
+      "name": "Shape repositories",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.grc_url }}/api/integrations/collect",
+        "options": {},
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "41022884-0355-5f69-b9e4-2ea481e7771c",
+      "name": "Send repositories to GRC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## GRC evidence: GitHub\n1. Edit **Settings**: organisation and your GRC address.\n2. On the four GitHub nodes choose a **GitHub API** credential. Use a read-only fine-grained token (organisation *Members: read*; repository *Metadata: read*, *Administration: read*) created by an organisation owner.\n3. On the two *Send \u2026 to GRC* nodes choose a **Header Auth** credential: Name `Authorization`, Value `Bearer <GRC API token>`.\n4. Run once with *Execute workflow*, then activate.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "e72ece42-4d90-511b-9c4b-9ac8e0f6fade",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Every day at 06:00": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "All members",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All members": {
+      "main": [
+        [
+          {
+            "node": "Members without 2FA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Members without 2FA": {
+      "main": [
+        [
+          {
+            "node": "Shape members",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape members": {
+      "main": [
+        [
+          {
+            "node": "Send members to GRC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send members to GRC": {
+      "main": [
+        [
+          {
+            "node": "Repositories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repositories": {
+      "main": [
+        [
+          {
+            "node": "Default branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default branch": {
+      "main": [
+        [
+          {
+            "node": "Shape repositories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape repositories": {
+      "main": [
+        [
+          {
+            "node": "Send repositories to GRC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

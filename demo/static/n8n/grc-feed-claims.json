@@ -1,0 +1,172 @@
+{
+  "name": "GRC feed: claims from a core system",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "682220c0-430b-5973-ac85-0846a88b5cd1",
+      "name": "Every 15 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "73723baf-efe0-5b55-baef-ab04d61fc666",
+              "name": "claims_api_url",
+              "value": "https://claims.yourcompany.example/api/claims?updated_in_last_minutes=20",
+              "type": "string"
+            },
+            {
+              "id": "946df8a9-ae73-569f-a27d-98ae610807da",
+              "name": "grc_url",
+              "value": "https://grc.yourcompany.example",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ae0a700-4cae-5116-8042-88b07fc89bde",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "EDIT THESE VALUES. grc_url is the address of your GRC platform.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.claims_api_url }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "ecce5cae-3d39-5e0f-ac86-ec10b749f008",
+      "name": "Read claims",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// EDIT THIS MAP: left side is the GRC field, right side is the field name in your claims system.\nconst MAP = {\n  external_id: 'claimId', claim_number: 'claimId', policy_number: 'policyNo', claim_type: 'type',            // Cashless or Reimbursement\n  status: 'status', claim_amount: 'amount', approved_amount: 'approvedAmount', registration_date: 'registeredAt',\n  preauth_request_at: 'preAuthRequestedAt', preauth_response_at: 'preAuthDecidedAt',\n  discharge_request_at: 'dischargeRequestedAt', discharge_response_at: 'dischargeDecidedAt',\n  documents_complete_at: 'lastDocumentAt', decision_date: 'decidedAt', settlement_date: 'settledAt',\n  rejection_reason: 'rejectionReason', approver_level: 'approverLevel', manual_override: 'override', override_reason: 'overrideReason',\n  extension_documented: 'extensionDocumented', extension_reason: 'extensionReason',\n};\n// Deliberately NOT mapped: patient names, diagnoses and other health details. The timeline rules do not need them.\nconst rows = $input.all().flatMap(i => Array.isArray(i.json) ? i.json : (i.json.claims || i.json.data || [i.json])).filter(r => r && Object.keys(r).length);\nif (!rows.length) return [];\nconst records = rows.map(r => Object.fromEntries(Object.entries(MAP).map(([k, v]) => [k, r[v]]).filter(([, v]) => v !== undefined && v !== null && v !== '')));\nreturn [{ json: { records } }];"
+      },
+      "id": "f4cb0611-bd85-5049-b9da-40ca83840e94",
+      "name": "Map fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.grc_url }}/api/integrations/claim",
+        "options": {},
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "96a05255-ae84-5644-8774-08e1c5f1d036",
+      "name": "Send claims to GRC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## GRC feed: claims from a core system\n1. Edit **Settings** and the field map in *Map fields* to match your claims system.\n2. *Read claims*: choose a **Header Auth** credential for your claims system (or change the authentication to suit it).\n3. *Send claims to GRC*: choose a **Header Auth** credential: Name `Authorization`, Value `Bearer <GRC API token>`. The token's registers must include `claim`.\nEach claim is matched on `external_id`, so sending it again updates it and the timeline rules run again. Health details are not sent.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "b9a79f65-1e03-5398-8b13-9bf6968dfcf5",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Every 15 minutes": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read claims",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read claims": {
+      "main": [
+        [
+          {
+            "node": "Map fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map fields": {
+      "main": [
+        [
+          {
+            "node": "Send claims to GRC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

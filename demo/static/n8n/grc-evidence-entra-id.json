@@ -1,0 +1,188 @@
+{
+  "name": "GRC evidence: Microsoft Entra ID",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "8f780c76-6acd-5821-b46f-96c1eb765368",
+      "name": "Every day at 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "05c601cb-3b13-536e-8ee3-38b18f789508",
+              "name": "graph_url",
+              "value": "https://graph.microsoft.com/v1.0",
+              "type": "string"
+            },
+            {
+              "id": "9e8e4e5b-1dc2-5f56-8e55-4847ce9ef1b4",
+              "name": "tenant",
+              "value": "your-tenant-name",
+              "type": "string"
+            },
+            {
+              "id": "946df8a9-ae73-569f-a27d-98ae610807da",
+              "name": "grc_url",
+              "value": "https://grc.yourcompany.example",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ae0a700-4cae-5116-8042-88b07fc89bde",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "EDIT THESE VALUES. grc_url is the address of your GRC platform.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.graph_url }}/reports/authenticationMethods/userRegistrationDetails?$select=userPrincipalName,userType,isAdmin,isMfaCapable,isMfaRegistered&$top=500",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "nextURL": "={{ $response.body['@odata.nextLink'] }}",
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body['@odata.nextLink'] }}",
+              "limitPagesFetched": true,
+              "maxRequests": 200
+            }
+          }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api"
+      },
+      "id": "0c945b88-306f-5f34-99de-6e118ed73d6b",
+      "name": "Registration details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Each input item is one page of the report.\nconst users = $input.all().flatMap(p => p.json.value || []);\nif (!users.length) throw new Error('Microsoft Graph returned no users. Check the AuditLog.Read.All permission and the Entra ID licence.');\nreturn [{ json: { checks: ['entra_mfa_capable', 'entra_admin_mfa'], source_ref: 'Entra tenant ' + $('Settings').first().json.tenant + ' (n8n)',\n  items: users.map(u => ({ user: u.userPrincipalName, user_type: u.userType, is_admin: !!u.isAdmin, mfa_capable: !!u.isMfaCapable, mfa_registered: !!u.isMfaRegistered })) } }];"
+      },
+      "id": "21f3fd29-cf61-59cd-a3fc-b8a1148f7a2e",
+      "name": "Shape users",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.grc_url }}/api/integrations/collect",
+        "options": {},
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "74592e47-9311-5263-8dac-adef99c02fa2",
+      "name": "Send users to GRC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## GRC evidence: Microsoft Entra ID\n1. Edit **Settings**.\n2. On *Registration details* choose an **OAuth2 API** credential: Grant Type *Client Credentials*, Access Token URL `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token`, Scope `https://graph.microsoft.com/.default`, Authentication *Body*. The app registration needs only the application permission **AuditLog.Read.All**.\n3. On *Send users to GRC* choose a **Header Auth** credential: Name `Authorization`, Value `Bearer <GRC API token>`.\n4. The report needs Entra ID P1 or P2 and omits disabled users.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "30e04703-5bf6-5258-ab90-6007bfa6f0be",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Every day at 06:00": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Registration details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registration details": {
+      "main": [
+        [
+          {
+            "node": "Shape users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape users": {
+      "main": [
+        [
+          {
+            "node": "Send users to GRC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
