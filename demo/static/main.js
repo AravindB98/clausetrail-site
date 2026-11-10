@@ -4,7 +4,16 @@ async function boot() {
   try {
     G.me = await GET("/api/me");
     G.meta = G.meta || (await GET("/api/meta"));
-  } catch (e) { return; }
+    try { localStorage.setItem("boot", JSON.stringify({ me: G.me, meta: G.meta })); } catch (e) { /* storage unavailable */ }
+  } catch (e) {
+    // Offline with a saved start-up copy: open Fieldwork so an auditor can keep recording results.
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem("boot") || "null"); } catch (x) { /* ignore */ }
+    if (!e.offline || !saved) return;
+    G.me = saved.me; G.meta = saved.meta;
+    if (!location.hash.startsWith("#/fieldwork")) { location.hash = "#/fieldwork"; return; }
+    return render();
+  }
   if (G.me.must_enrol_mfa) return P.enrolGate();
   if (!location.hash || location.hash === "#/") location.hash = (G.me.permissions.dashboard || 0) >= 1 ? "#/dashboard/executive" : "#/e/task";
   else render();
@@ -48,5 +57,7 @@ window.addEventListener("hashchange", render);
 (async () => {
   const health = await GET("/api/health").catch(() => null);
   if ((health && health.needs_setup) || location.hash.startsWith("#sso=")) return showGate();
+  if (!health) return boot();                       // no connection: boot() falls back to the saved copy if there is one
   try { G.me = await GET("/api/me"); await boot(); } catch (e) { /* showGate already displayed by api() on 401 */ }
 })();
+if (false && "serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("/sw.js").catch(() => {});

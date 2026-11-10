@@ -31,7 +31,8 @@ async function api(method, url, body) {
   const opt = { method, credentials: "same-origin", headers: {} };
   if (body instanceof FormData) opt.body = body;
   else if (body !== undefined) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
-  const res = await fetch(url, opt);
+  let res;
+  try { res = await fetch(url, opt); } catch (err) { const e = new Error("No connection to the server. Check your network and try again."); e.offline = true; throw e; }
   if (res.status === 401 && !url.includes("/auth/login")) { G.me = null; showGate(); throw new Error("Please sign in."); }
   const data = (res.headers.get("content-type") || "").includes("json") ? await res.json() : await res.text();
   if (!res.ok) throw new Error((data && data.error) || (data && data.detail && JSON.stringify(data.detail)) || `Request failed (${res.status})`);

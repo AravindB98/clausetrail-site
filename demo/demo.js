@@ -62,6 +62,7 @@
     if (method === "POST" && p.startsWith("/api/auth/mfa")) return json({ error: "Two-step sign-in can be set up in the installed product. This demo is read-only." }, 403);
     if (method === "POST" && p === "/api/notifications/read") return json({ marked: 0 });
     if (method !== "GET") return json({ error: READ_ONLY }, 403);
+    if (p === "/api/sampling/size") { const n = Number(q.get("population")), raw = Math.log(1 - Number(q.get("confidence") || 95) / 100) / Math.log(1 - Number(q.get("tolerable") || 5) / 100); return json({ size: n ? Math.min(n, Math.ceil(raw / (1 + (raw - 1) / n))) : 0 }); }
     if (D.snap[full] !== undefined) return json(D.snap[full]);
     if (D.snap[p] !== undefined && !["/api/calendar", "/api/audit-trail", "/api/trace"].includes(p)) return json(D.snap[p]);
     if (p === "/api/dashboard/department") return json(D.snap[`/api/dashboard/department?department=${q.get("department")}`] || D.snap["/api/dashboard/department"]);

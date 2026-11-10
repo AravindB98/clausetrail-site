@@ -187,6 +187,13 @@ h2.section { font: 600 17px var(--serif); margin: 26px 0 10px; }
 .review-bars { display: grid; grid-template-columns: minmax(120px, 30%) 1fr auto; gap: 10px 12px; align-items: center; font-size: 13px; } .review-bars .v { color: var(--text-2); font-variant-numeric: tabular-nums; }
 ol.enrol { padding-left: 20px; display: grid; gap: 14px; margin: 14px 0 0; } ol.enrol li b { display: block; } ol.enrol li span { color: var(--text-2); }
 @media (max-width: 700px) { .term-row { grid-template-columns: 1fr; gap: 2px; } .review-bars { grid-template-columns: 1fr; } }
+/* insight pages */
+.pair-bars { display: grid; grid-template-columns: minmax(130px, 30%) 1fr auto; gap: 10px 12px; align-items: center; font-size: 13px; } .pair-bars .bar { display: block; height: 9px; min-width: 2px; border-radius: 0 4px 4px 0; } .pair-bars .bar + .bar { margin-top: 2px; } .pair-bars .v { color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.div-bars { display: grid; grid-template-columns: minmax(110px, 34%) 1fr auto; gap: 7px 10px; align-items: center; font-size: 13px; } .div-bars .l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .div-bars .v { font-variant-numeric: tabular-nums; color: var(--text-2); }
+.div-bars .track { position: relative; height: 12px; background: linear-gradient(to right, transparent calc(50% - .5px), #9aa5b1 calc(50% - .5px), #9aa5b1 calc(50% + .5px), transparent calc(50% + .5px)); } .div-bars .track i { position: absolute; top: 0; height: 12px; }
+.fw-list { display: grid; gap: 12px; max-width: 640px; } .fw h3 { font-size: 15px; color: var(--text); margin: 2px 0 6px; } .fw label.f { margin-top: 8px; } .fw .row { margin: 10px 0 4px; } .fw select, .fw textarea, .fw .btn { font-size: 16px; }
+@media (max-width: 700px) { .pair-bars, .div-bars { grid-template-columns: 1fr; gap: 3px; } .pair-bars > :nth-child(3n), .div-bars > :nth-child(3n) { margin-bottom: 8px; } }
+.fw-list { grid-template-columns: minmax(0, 1fr); } .fw .code { white-space: normal; } .fw h3 { overflow-wrap: anywhere; }
 
 .demo-bar { position: fixed; left: 12px; bottom: 12px; z-index: 90; background: #14213a; color: #fff; padding: 7px 12px; border-radius: 6px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(20,33,58,.3); }
 .demo-bar a { color: #7fdde3; }
