@@ -31,6 +31,7 @@ section { padding:84px 0; } section.tint { background:var(--paper); } .head { ma
 .decide li::before { content:""; position:absolute; left:2px; top:17px; width:12px; height:7px; border-left:2.5px solid var(--teal); border-bottom:2.5px solid var(--teal); transform:rotate(-45deg); }
 table { width:100%; border-collapse:collapse; font-size:15px; background:var(--surface); } th { text-align:left; font-size:13.5px; color:var(--text-2); padding:10px 14px; border-bottom:1px solid var(--line); } td { padding:12px 14px; border-bottom:1px solid #eceff3; vertical-align:top; } .tw { border:1px solid var(--line); border-radius:8px; overflow-x:auto; }
 .road { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface); } .road > div { padding:22px 22px 26px; border-left:1px solid var(--line); } .road > div:first-child { border-left:0; background:var(--teal-soft); }
+.road .open { font-size:13.5px; color:var(--muted); margin-top:14px; } .road > div:nth-child(2) { background:var(--teal-soft); }
 .road .when { font-size:13.5px; color:var(--muted); margin-bottom:4px; } .road ul { margin:12px 0 0; padding-left:18px; font-size:14.5px; color:var(--text-2); } .road li { margin-bottom:6px; }
 .steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:32px; counter-reset:s; margin:0; padding:0; list-style:none; } .steps li { counter-increment:s; border-top:2px solid var(--ink); padding-top:14px; } .steps li::before { content:counter(s); font:600 30px var(--serif); display:block; color:var(--ink); } .steps p { color:var(--text-2); font-size:15.5px; margin-top:4px; }
 .note { border-left:3px solid var(--saffron); background:var(--saffron-soft); padding:16px 20px; border-radius:0 6px 6px 0; } .note h3 { font:600 16px var(--sans); margin-bottom:6px; } .note ul { margin:8px 0 0; padding-left:20px; } .note li { margin-bottom:5px; font-size:15px; }
@@ -84,6 +85,15 @@ footer { background:var(--ink); color:#93a3bb; padding:30px 0; font-size:14px; b
     <img class="shot" src="images/automated-checks.png" alt="Automated checks screen listing seven checks across AWS, GitHub and Entra ID with pass and fail states" loading="lazy" width="1440" height="900"></div>
   <div class="feature flip"><div><h3>One control, several frameworks</h3><p>67 starter mappings link the control library to ISO 27001, NIST CSF 2.0, SOC 2, the DPDP Act and others. Coverage shows how many references are backed by a passing test and accepted evidence.</p></div>
     <img class="shot" src="images/framework-coverage.png" alt="Framework coverage table with references mapped and assured per framework" loading="lazy" width="1440" height="900"></div>
+  <div class="feature"><div><h3>Charts where the numbers are</h3><p>Every register opens with a chart strip showing how its records split by status, severity or rating, and how many were added each month. The executive dashboard adds 12-month trends.</p>
+    <ul><li>Findings raised against findings closed</li><li>Corrective actions due against verified</li><li>Grievances received against resolved</li><li>Hover any bar or point for the exact figure</li></ul></div>
+    <img class="shot" src="images/trends.png" alt="Executive dashboard trend charts for findings, corrective actions, grievances, claims and control tests over 12 months" loading="lazy" width="1440" height="900"></div>
+  <div class="feature flip"><div><h3>Every short form explained</h3><p>Nobody should need a glossary open in another window. Page titles carry the full form and a two-line explanation, and any short form on screen shows the same on hover.</p>
+    <ul><li><b>TPA: Third Party Administrator.</b> A licensed company that processes health insurance claims on the insurer's behalf.</li><li><b>CAPA: Corrective and Preventive Action.</b> The action taken to fix a problem that was found, and to stop it happening again.</li><li>69 terms, searchable inside the app</li></ul></div>
+    <img class="shot" src="images/terms.png" alt="Findings register with the term explained under the title and an at-a-glance chart strip" loading="lazy" width="1440" height="900"></div>
+  <div class="feature"><div><h3>Sign-in that is ready for a pilot</h3><p>Two-step sign-in with any authenticator app, single sign-on through Microsoft Entra ID, Google or Okta, and HTTPS built into the Docker set-up.</p>
+    <ul><li>Require two-step sign-in for everyone with one setting</li><li>Ten single-use recovery codes for a lost phone</li><li>Passwords can be switched off, with one emergency administrator kept</li></ul></div>
+    <img class="shot" src="images/two-step.png" alt="Account screen showing two-step sign-in set-up with a QR code and three numbered steps" loading="lazy" width="1440" height="900"></div>
 </div></section>
 
 <section id="automation"><div class="wrap">
@@ -117,10 +127,10 @@ footer { background:var(--ink); color:#93a3bb; padding:30px 0; font-size:14px; b
 </div></div></section>
 
 <section id="roadmap"><div class="wrap">
-  <div class="head"><h2>Roadmap</h2><p class="lede">What is delivered and what is proposed next. Items after version 1.1 are plans, not commitments, and the order will follow what pilot users need.</p></div>
+  <div class="head"><h2>Roadmap</h2><p class="lede">What is delivered and what is proposed next. Items not marked delivered are plans, not commitments, and the order will follow what pilot users need.</p></div>
   <div class="road">
     <div><p class="when">Delivered, November 2026</p><h3>1.0 and 1.1</h3><ul><li>All twelve modules, dashboards, 15 reports</li><li>Automation studio with 20 starter workflows</li><li>Seven governed AI agents</li><li>Evidence collectors for GitHub, Entra ID and AWS</li><li>Automated control checks</li><li>Cross-framework mapping and coverage</li><li>Five n8n workflows</li></ul></div>
-    <div><p class="when">Next</p><h3>1.2 Pilot readiness</h3><ul><li>Docker and Windows start paths verified on real machines</li><li>Collectors verified against real accounts</li><li>HTTPS included in the Docker setup</li><li>Multi-factor authentication and single sign-on</li><li>Obligation pack reviewed by a compliance professional</li></ul></div>
+    <div><p class="when">Delivered, November 2026</p><h3>1.2 Pilot readiness</h3><ul><li>Two-step sign-in and single sign-on</li><li>HTTPS included in the Docker set-up</li><li>Start files and Docker set-up checked on Linux, Windows and macOS machines on every change</li><li>Verify mode for a collector's first run on a real account</li><li>Content review page with signed sign-offs</li><li>Charts above every register and 12-month trends</li><li>Every short form explained in plain language</li></ul><p class="open">Still open: a penetration test, a compliance professional's review of the starter content, and single sign-on and collectors against live accounts.</p></div>
     <div><p class="when">Then</p><h3>1.3 Deeper integration</h3><ul><li>More collectors: Google Workspace, Azure, Okta, Jira</li><li>Connectors for common claims and policy systems</li><li>OCR for scanned circulars</li><li>Branch-level access</li><li>Large reports generated in the background</li></ul></div>
     <div><p class="when">Later</p><h3>2.0 Insight</h3><ul><li>Regulatory change watch from official sources</li><li>Predictive risk indicators</li><li>Automated audit sampling</li><li>Hospital network analytics</li><li>Mobile app for auditors</li><li>High-availability deployment</li></ul></div>
   </div>
@@ -135,10 +145,10 @@ footer { background:var(--ink); color:#93a3bb; padding:30px 0; font-size:14px; b
   </ol>
     <div class="note"><h3>Before you rely on it</h3>
     <ul><li>The obligations, timeline rules, automated checks and framework mappings are starter content written from public summaries. They load unvalidated, and a qualified compliance professional must check them against the official text.</li>
-      <li>HTTPS, encryption at rest, multi-factor authentication and a penetration test are not included yet. Use masked data until they are in place.</li>
-      <li>Automated tests pass on SQLite and PostgreSQL. The Docker build, the Windows and Mac start files and the collectors against real accounts have not been verified yet.</li></ul></div>
+      <li>HTTPS, two-step sign-in and single sign-on are included from version 1.2. Encryption at rest is yours to provide, and no penetration test has been performed. Use masked data until both are in place.</li>
+      <li>Every change is tested on Linux, Windows and macOS machines, including the Docker set-up over HTTP and HTTPS. Not yet tested: Docker Desktop on a Windows or Mac desktop, single sign-on against a live identity provider, and the collectors against real accounts.</li></ul></div>
 </div></section>
 
-<footer><div class="wrap">ClauseTrail, India Edition, version 1.1. Built from the India Edition 2026 requirements. The demo data is fictional.</div></footer>
+<footer><div class="wrap">ClauseTrail, India Edition, version 1.2. Built from the India Edition 2026 requirements. The demo data is fictional.</div></footer>
 </body>
 </html>

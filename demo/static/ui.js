@@ -1,6 +1,7 @@
 /* Shared building blocks: DOM helper, API client, formatting, chips, charts, modal, record form. */
 "use strict";
 const G = { me: null, meta: null, optCache: {} };
+const ROUTES = {};          // extra pages register here: ROUTES.name = async (root, arg, query) => {}
 
 /** h("div", {class: "x", onclick: fn}, child, "text") : builds DOM nodes; text is always escaped. */
 function h(tag, attrs, ...kids) {
@@ -127,7 +128,7 @@ function columns(rows, keyA, keyB, labelA, labelB) {
 }
 const stat = (value, label, href) => h("div", { class: "stat" }, h("b", {}, href ? h("a", { href }, fmt.num(value)) : fmt.num(value)), h("span", {}, label));
 const card = (title, ...body) => h("section", { class: "card" }, title ? h("h2", {}, title) : null, ...body);
-const pageHead = (title, sub, ...actions) => h("div", { class: "page-head" }, h("div", { class: "grow" }, h("h1", {}, title), sub ? h("p", {}, sub) : null), ...actions);
+const pageHead = (title, sub, ...actions) => h("div", { class: "page-head" }, h("div", { class: "grow" }, h("h1", {}, title), sub ? h("p", {}, sub) : null, explain(title)), ...actions);
 const empty = (title, text, action) => h("div", { class: "empty" }, h("b", {}, title), text, action ? h("div", { style: "margin-top:12px" }, action) : null);
 
 function simpleTable(cols, rows, onRow) {
@@ -147,6 +148,7 @@ function modal(title, body, buttons, narrow) {
       h("div", { class: "body" }, body),
       h("footer", {}, (buttons || []).map((b) => h("button", { class: "btn " + (b.cls || ""), onclick: act(async (e) => { if ((await b.run(e)) !== false) close(); }) }, b.label)))));
   document.body.append(ov);
+  annotate(ov);
   const first = ov.querySelector("input,select,textarea");
   if (first) first.focus();
   return { close };

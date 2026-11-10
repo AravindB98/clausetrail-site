@@ -5,6 +5,7 @@ async function boot() {
     G.me = await GET("/api/me");
     G.meta = G.meta || (await GET("/api/meta"));
   } catch (e) { return; }
+  if (G.me.must_enrol_mfa) return P.enrolGate();
   if (!location.hash || location.hash === "#/") location.hash = (G.me.permissions.dashboard || 0) >= 1 ? "#/dashboard/executive" : "#/e/task";
   else render();
 }
@@ -36,7 +37,9 @@ async function render() {
     else if (p[0] === "tokens") await P.tokens(root);
     else if (p[0] === "audit-trail") await P.auditTrail(root, q);
     else if (p[0] === "settings") await P.settings(root);
+    else if (ROUTES[p[0]]) await ROUTES[p[0]](root, p[1], q);
     else put(root, empty("Page not found", "Choose a page from the menu."));
+    annotate(document.getElementById("app"));
   } catch (e) {
     if (G.me) put(root, h("div", { class: "card" }, empty("This page could not be shown", e.message)));
   }
@@ -44,6 +47,6 @@ async function render() {
 window.addEventListener("hashchange", render);
 (async () => {
   const health = await GET("/api/health").catch(() => null);
-  if (health && health.needs_setup) return showGate();
+  if ((health && health.needs_setup) || location.hash.startsWith("#sso=")) return showGate();
   try { G.me = await GET("/api/me"); await boot(); } catch (e) { /* showGate already displayed by api() on 401 */ }
 })();

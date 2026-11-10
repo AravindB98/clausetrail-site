@@ -3,32 +3,6 @@
 const P = {};
 const LIFECYCLE = ["Regulation", "Obligation", "Applicability", "Risk", "Control", "Evidence", "Testing", "Audit", "Finding", "CAPA", "Reporting"];
 
-/* ── sign-in and first-run setup ── */
-async function showGate() {
-  const health = await GET("/api/health").catch(() => ({ needs_setup: false }));
-  const setup = health.needs_setup;
-  const f = {}, inp = (k, label, type, extra) => h("label", { class: "f", style: "margin-bottom:12px" }, h("span", {}, label), (f[k] = h("input", { type: type || "text", required: true, autocomplete: extra || "off" })));
-  const sample = h("input", { type: "checkbox", checked: true });
-  const form = h("form", { onsubmit: act(async () => {
-    if (setup) {
-      await POST("/api/setup", { organisation: f.org.value, name: f.name.value, email: f.email.value, password: f.pw.value, sample_data: sample.checked });
-      toast("Setup complete. Signing you in…");
-    }
-    await POST("/api/auth/login", { email: f.email.value, password: f.pw.value });
-    await boot();
-  }) },
-    setup ? [inp("org", "Organisation name"), inp("name", "Your name")] : null,
-    inp("email", "Email", "email", "username"), inp("pw", setup ? "Choose a password (10+ characters, letters and numbers)" : "Password", "password", setup ? "new-password" : "current-password"),
-    setup ? h("label", { class: "check", style: "margin:4px 0 16px" }, sample, h("span", {}, "Load a fictional insurer's sample data so I can explore (removable later)")) : null,
-    h("button", { class: "btn primary", style: "width:100%;padding:9px" }, setup ? "Create organisation and sign in" : "Sign in"));
-  put(document.getElementById("app"), h("div", { class: "gate" },
-    h("div", { class: "pitch" }, h("h1", {}, "Governance, risk and compliance for health insurers"),
-      h("p", {}, "One place for regulatory obligations, risks, controls, evidence, claims timelines, TPA oversight, audits and corrective actions, with every step traceable."),
-      h("div", { class: "chain" }, LIFECYCLE.map((s) => h("span", {}, s)))),
-    h("div", { class: "panel" }, h("h2", {}, setup ? "Set up your organisation" : "Sign in"),
-      h("p", { class: "muted" }, setup ? "This creates the first administrator account. It takes a few seconds." : "Use the email and password your administrator gave you."), form)));
-}
-
 /* ── shell ── */
 function shell() {
   const cur = location.hash.split("?")[0];
@@ -38,7 +12,7 @@ function shell() {
     G.me.menu.map((g) => {
       const active = g.items.some((i) => i.href.split("?")[0] === cur || cur.startsWith(i.href.split("?")[0] + "/"));
       const grp = h("div", { class: "nav-group" + (active || openGroups[g.label] ? " open" : "") },
-        h("button", { "aria-expanded": active ? "true" : "false", onclick: () => { grp.classList.toggle("open"); openGroups[g.label] = grp.classList.contains("open"); sessionStorage.setItem("nav", JSON.stringify(openGroups)); } }, g.label, h("span", { class: "chev" }, "›")),
+        h("button", { "aria-expanded": active ? "true" : "false", onclick: () => { grp.classList.toggle("open"); openGroups[g.label] = grp.classList.contains("open"); sessionStorage.setItem("nav", JSON.stringify(openGroups)); } }, h("span", {}, g.label), h("span", { class: "chev" }, "›")),
         h("div", { class: "nav-items" }, g.items.map((i) => h("a", { href: i.href, class: location.hash === i.href || (cur === i.href && !i.href.includes("?") && !location.hash.includes("?")) ? "on" : "" }, i.label))));
       return grp;
     }));
@@ -51,18 +25,12 @@ function shell() {
     can("work", 1) ? h("a", { href: "#/approvals" }, "Approvals", G.me.pending_approvals ? h("span", { class: "count" }, G.me.pending_approvals) : null) : null,
     can("work", 1) ? h("a", { href: "#/e/notification" }, "Notifications", G.me.unread ? h("span", { class: "count" }, G.me.unread) : null) : null,
     h("span", { class: "muted small" }, `${G.me.user.name} · ${G.me.user.role}`),
-    h("button", { class: "btn sm", onclick: () => P.account() }, "Password"),
+    h("button", { class: "btn sm", onclick: () => P.account() }, "Account"),
     h("button", { class: "btn sm", onclick: act(async () => { await POST("/api/auth/logout"); G.me = null; showGate(); }) }, "Sign out"));
   const content = h("main", { class: "content", id: "content" });
   put(document.getElementById("app"), h("div", { class: "shell" }, side, h("div", { class: "main" }, top, content)));
   return content;
 }
-P.account = () => {
-  const a = h("input", { type: "password", autocomplete: "current-password" }), b = h("input", { type: "password", autocomplete: "new-password" });
-  modal("Change your password", h("div", { class: "stack" }, h("label", { class: "f" }, h("span", {}, "Current password"), a), h("label", { class: "f" }, h("span", {}, "New password (10+ characters, letters and numbers)"), b)),
-    [{ label: "Cancel", run: () => {} }, { label: "Change password", cls: "primary", run: async () => { await POST("/api/auth/password", { current: a.value, new: b.value }); toast("Password changed"); } }], true);
-};
-
 /* ── dashboards ── */
 const dashTabs = (name) => h("div", { class: "tabs" }, [["executive", "Executive"], ["department", "Department"], ["compliance", "Compliance"], ["risk", "Risk"]].map(([k, l]) =>
   h("button", { class: k === name ? "on" : "", onclick: () => (location.hash = `#/dashboard/${k}`) }, l)));
@@ -91,6 +59,7 @@ P.dashboard = async (root, name, q) => {
         { label: "Gaps", key: "gaps", num: true }, { label: "Overdue", key: "overdue", num: true }, { label: "Open findings", key: "open_findings", num: true }], d.departments))),
       h("div", { class: "stack" }, card(["Regulatory changes", h("a", { href: "#/e/regulatory_change" }, "All")], d.regulatory_changes.length ? d.regulatory_changes.map((c) => h("div", { style: "margin-bottom:8px" }, h("a", { href: `#/e/regulatory_change/${c.id}` }, c.title), h("div", {}, chip(c.status), c.deadline ? h("span", { class: "muted small" }, `  due ${fmt.date(c.deadline)}`) : null))) : h("p", { class: "muted small" }, "None in progress.")),
         card(["Management actions pending", h("a", { href: "#/e/governance_action" }, "All")], d.management_actions.length ? d.management_actions.map((a) => h("div", { style: "margin-bottom:6px" }, h("a", { href: `#/e/governance_action/${a.id}` }, a.title), " ", a.overdue ? chip("Overdue") : h("span", { class: "muted small" }, fmt.date(a.due_date)))) : h("p", { class: "muted small" }, "None.")))));
+    out.push(trendsBlock());
   } else if (name === "department") {
     const depts = await options("department");
     if (!["Department Head", "Employee"].includes(G.me.user.role)) out.splice(1, 0, h("div", { class: "row", style: "margin:-8px 0 12px" }, h("span", { class: "muted" }, "Department"),
@@ -181,6 +150,7 @@ P.list = async (root, entity, q) => {
       h("span", { class: "grow" }),
       writable ? [importInput, h("button", { class: "btn sm", onclick: () => importInput.click(), "data-tip": "Upload a CSV or Excel file. Column headings should match the template." }, "Import"), h("a", { class: "btn sm", href: `/api/e/${entity}/template` }, "Template")] : null,
       h("a", { class: "btn sm", href: `/api/e/${entity}/export?fmt=xlsx&${exportQ}` }, "Export Excel"), h("a", { class: "btn sm", href: `/api/e/${entity}/export?fmt=csv&${exportQ}` }, "CSV")),
+    data.total > 1 ? summaryStrip(entity, new URLSearchParams({ ...filters, q: state.q })) : null,
     data.rows.length ? h("div", { class: "table-wrap" }, h("table", {},
       h("thead", {}, h("tr", {}, h("th", { class: "sort", onclick: () => go({ sort: state.sort === "id" ? "-id" : "id" }) }, "Ref"), cols.map(th))),
       h("tbody", {}, data.rows.map((r) => h("tr", { class: "click", onclick: () => (location.hash = entity === "workflow" ? `#/workflows/${r.id}` : `#/e/${entity}/${r.id}`) },
@@ -213,6 +183,8 @@ P.detail = async (root, entity, id) => {
     modal(`Set password for ${rec.name}`, h("label", { class: "f" }, h("span", {}, "New password (10+ characters, letters and numbers). Share it with the user securely."), p),
       [{ label: "Cancel", run: () => {} }, { label: "Set password", cls: "primary", run: async () => { await POST(`/api/users/${rec.id}/password`, { password: p.value }); toast(`${rec.name} can now sign in`); render(); } }], true);
   } }, rec.can_sign_in ? "Reset password" : "Set password so they can sign in"));
+  if (entity === "user" && can("admin", 4) && rec.mfa_enabled) actions.push(h("button", { class: "btn", onclick: () => confirmBox(`Reset two-step sign-in for ${rec.name}?`, "Use this when someone has lost or replaced their phone. Their authenticator and recovery codes stop working, they are signed out, and they set it up again at next sign-in.", "Reset", async () => { await POST(`/api/users/${rec.id}/mfa/reset`); toast("Two-step sign-in reset"); render(); }) }, "Reset two-step sign-in"));
+  if (entity === "content_signoff" && !rec.signed && rec.reviewer === G.me.user.id) actions.push(h("button", { class: "btn primary", onclick: () => confirmBox("Sign this review?", "By signing you confirm that you checked the records in scope against the official sources listed. A signed sign-off cannot be changed.", "Sign", async () => { await POST(`/api/review/signoff/${rec.id}`); toast("Signed"); render(); }) }, "Sign"));
   if (entity === "training_assignment" && rec.status !== "Completed" && (rec.trainee === G.me.user.id || can("training", 3))) actions.push(h("a", { class: "btn primary", href: `#/training/${rec.id}` }, "Take assessment"));
   if (entity === "workflow_run" && can("workflow", 2)) {
     if (rec.status === "Failed") actions.push(h("button", { class: "btn primary", onclick: act(async () => { await POST(`/api/runs/${rec.id}/retry`); toast("Retry started"); setTimeout(render, 900); }) }, "Retry"));
@@ -356,6 +328,7 @@ P.reports = async (root, id) => {
   }
   const r = await GET(`/api/reports/${id}`);
   put(root, h("div", { class: "crumb" }, h("a", { href: "#/reports" }, "Reports"), " / ", r.id), pageHead(r.title, r.summary, ["xlsx", "csv", "pdf"].map((f) => h("a", { class: "btn", href: `/api/reports/${r.id}?fmt=${f}` }, f === "xlsx" ? "Excel" : f.toUpperCase())), h("button", { class: "btn", onclick: () => print() }, "Print")),
+    reportChart(r),
     r.rows.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, r.columns.map((c) => h("th", {}, c)))), h("tbody", {}, r.rows.map((row) => h("tr", {}, row.map((v) => h("td", { class: typeof v === "number" ? "num" : "" }, v === null || v === undefined ? "" : typeof v === "number" ? fmt.num(v) : toneOf(v) ? chip(v) : String(v)))))))) : h("div", { class: "card" }, empty("No data for this report yet", "")));
 };
 
@@ -416,10 +389,12 @@ P.settings = async (root) => {
   const num = (k, label, help) => { const i = h("input", { type: "number", step: "any", value: s[k], disabled: !admin }); i.dataset.k = k; return h("label", { class: "f" }, h("span", {}, label), i, help ? h("span", { class: "muted small" }, help) : null); };
   const lim = ["L1", "L2", "L3"].map((l) => { const i = h("input", { type: "number", value: s.authority_limits[l], disabled: !admin }); i.dataset.lim = l; return h("label", { class: "f" }, h("span", {}, `${l} approval limit (₹)`), i); });
   const ai = h("input", { type: "checkbox", checked: s.ai_enabled, disabled: !admin });
+  const mfaReq = h("input", { type: "checkbox", checked: s.require_mfa, disabled: !admin });
   const form = h("div", { class: "form-grid" }, num("grievance_resolution_days", "Grievance resolution timeline (days)", "Used to set each grievance's due date."), num("risk_appetite_default", "Default risk appetite threshold (score out of 25)"),
     ...lim, num("fraud_frequency_claims", "Fraud indicator: claims per policy"), num("fraud_frequency_days", "…within this many days"), num("fraud_billing_sigma", "Unusual billing threshold (standard deviations)"), num("repeat_grievance_days", "Repeat grievance window (days)"), num("evidence_stale_days", "Evidence considered stale after (days)"),
-    h("label", { class: "check wide" }, ai, "Allow AI agents for this organisation"));
-  const save = act(async () => { const body = { ai_enabled: ai.checked, authority_limits: {} }; form.querySelectorAll("input[data-k]").forEach((i) => (body[i.dataset.k] = Number(i.value))); form.querySelectorAll("input[data-lim]").forEach((i) => (body.authority_limits[i.dataset.lim] = Number(i.value))); await PUT("/api/settings", body); toast("Settings saved"); });
+    h("label", { class: "check wide" }, ai, "Allow AI agents for this organisation"),
+    h("label", { class: "check wide" }, mfaReq, "Require two-step sign-in (MFA) for everyone who signs in with a password. People without it are asked to set it up before they can continue."));
+  const save = act(async () => { const body = { ai_enabled: ai.checked, require_mfa: mfaReq.checked, authority_limits: {} }; form.querySelectorAll("input[data-k]").forEach((i) => (body[i.dataset.k] = Number(i.value))); form.querySelectorAll("input[data-lim]").forEach((i) => (body.authority_limits[i.dataset.lim] = Number(i.value))); await PUT("/api/settings", body); toast("Settings saved"); });
   const newOrg = () => { const f = {}; const i = (k, l, t) => h("label", { class: "f" }, h("span", {}, l), (f[k] = h("input", { type: t || "text" }))); const sm = h("input", { type: "checkbox" });
     modal("New organisation", h("div", { class: "stack" }, i("name", "Organisation name"), i("admin_name", "Administrator's name"), i("admin_email", "Administrator's email", "email"), i("admin_password", "Administrator's password", "password"), h("label", { class: "check" }, sm, "Load sample data")),
       [{ label: "Cancel", run: () => {} }, { label: "Create organisation", cls: "primary", run: async () => { await POST("/api/tenants", { name: f.name.value, admin_name: f.admin_name.value, admin_email: f.admin_email.value, admin_password: f.admin_password.value, sample_data: sm.checked }); toast("Organisation created"); await boot(); } }], true); };
