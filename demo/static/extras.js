@@ -147,6 +147,7 @@ function reportChart(r) {
 
 /* ── sign-in, first-run setup and two-step sign-in ── */
 async function showGate() {
+  askRemove(); ASK.log = []; ASK.info = null; ASK.open = false;
   const health = await GET("/api/health").catch(() => ({ needs_setup: false }));
   const setup = health.needs_setup, sso = health.sso;
   const ssoError = location.hash.startsWith("#sso=") ? decodeURIComponent(location.hash.slice(5).replace(/\+/g, " ")) : "";
@@ -457,3 +458,63 @@ ROUTES.fieldwork = async (root) => {
   draw();
 };
 window.addEventListener("online", () => { if (G.me && (FW.get(FW.queue) || []).length) fieldworkSync().then((r) => { if (r.sent) { toast(`${r.sent} saved result(s) sent`); if (location.hash.startsWith("#/fieldwork")) render(); } }); });
+
+/* ── Ask ClauseTrail: text and voice assistant ── */
+const ASK = { el: null, open: false, log: [], info: null, speak: false, rec: null, warned: false };
+const speechIn = () => window.SpeechRecognition || window.webkitSpeechRecognition;
+function askRemove() { if (ASK.el) { ASK.el.remove(); ASK.el = null; } if (window.speechSynthesis) speechSynthesis.cancel(); }
+async function askMount() {
+  if (ASK.el || !G.me) return;
+  try { ASK.info = ASK.info || (await GET("/api/assistant")); } catch (e) { return; }
+  if (!ASK.info.enabled) return;
+  const list = h("div", { class: "ask-log", "aria-live": "polite" }), input = h("input", { type: "text", placeholder: "Ask about your records", "aria-label": "Your question", maxlength: 500 });
+  const voiceOk = ASK.info.voice && !!speechIn(), status = h("div", { class: "ask-status small muted" });
+  const say = (text) => { if (!ASK.speak || !window.speechSynthesis || !text) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-IN"; speechSynthesis.speak(u); };
+  const bubble = (m) => {
+    if (m.who === "you") return h("div", { class: "ask-msg you" }, m.text);
+    const r = m.r, how = r.lookup && r.lookup.register ? `Looked up: ${(ent(r.lookup.register) || { plural: r.lookup.register }).plural.toLowerCase()}` + (Object.keys(r.lookup.filters || {}).length ? ", " + Object.entries(r.lookup.filters).map(([k, v]) => (k === "_open" ? "not closed" : k === "_overdue" ? "overdue" : `${k.replace(/_/g, " ")} ${v}`)).join(", ") : "") : "";
+    const node = h("div", { class: "ask-msg" }, h("p", {}, r.answer),
+      r.chart ? h("div", { class: "ask-chart" }, h("h3", {}, r.chart.title), barList(r.chart.items.map((i) => ({ label: i.label, value: i.value })))) : null,
+      r.trend ? h("div", { class: "ask-chart" }, lineChart(r.trend.months, r.trend.series, r.trend.title)) : null,
+      (r.rows || []).length ? h("ul", { class: "ask-rows" }, r.rows.map((x) => h("li", {}, h("a", { href: x.href }, x.label), x.detail ? h("span", { class: "muted small" }, " " + x.detail) : null))) : null,
+      (r.links || []).length ? h("div", { class: "row", style: "gap:8px;margin-top:8px" }, r.links.map((l) => h("a", { class: "btn sm", href: l.href }, l.label))) : null,
+      (r.suggestions || []).length ? h("div", { class: "ask-chips" }, r.suggestions.map((s) => h("button", { class: "btn sm", onclick: () => send(s) }, s))) : null,
+      how ? h("div", { class: "small muted", style: "margin-top:8px" }, how) : null);
+    annotate(node);
+    return node;
+  };
+  const draw = () => { put(list, ASK.log.length ? ASK.log.map(bubble) : h("div", { class: "ask-msg" }, h("p", {}, "Ask a question about your records. I look things up and show where the answer came from. I cannot change anything."),
+    h("div", { class: "ask-chips" }, ASK.info.examples.slice(0, 6).map((s) => h("button", { class: "btn sm", onclick: () => send(s) }, s))))); list.scrollTop = list.scrollHeight; };
+  const send = async (text, byVoice) => {
+    text = (text || input.value).trim();
+    if (!text) return;
+    input.value = ""; ASK.log.push({ who: "you", text }); draw(); status.textContent = "Looking that up…";
+    try { const r = await POST("/api/assistant/ask", { question: text }); ASK.log.push({ who: "bot", r }); if (byVoice) ASK.speak = true; say(r.speak || r.answer); if (r.navigate) location.hash = r.navigate; }
+    catch (e) { ASK.log.push({ who: "bot", r: { answer: e.message } }); }
+    status.textContent = ""; draw(); spk.setAttribute("aria-pressed", ASK.speak ? "true" : "false"); spk.textContent = ASK.speak ? "Voice replies: on" : "Voice replies: off";
+  };
+  const listen = () => {
+    if (ASK.rec) { ASK.rec.stop(); return; }
+    const start = () => { const R = speechIn(), rec = (ASK.rec = new R()); rec.lang = "en-IN"; rec.interimResults = true; rec.maxAlternatives = 1; mic.classList.add("on"); status.textContent = "Listening… speak your question";
+      rec.onresult = (ev) => { const res = ev.results[ev.results.length - 1]; input.value = res[0].transcript; if (res.isFinal) send(res[0].transcript, true); };
+      rec.onerror = (ev) => { status.textContent = ev.error === "not-allowed" ? "The microphone is blocked. Allow it in the browser's address bar, then try again." : ev.error === "no-speech" ? "I did not hear anything. Try again." : "Voice input did not work. You can type instead."; };
+      rec.onend = () => { ASK.rec = null; mic.classList.remove("on"); if (status.textContent.startsWith("Listening")) status.textContent = ""; };
+      rec.start(); };
+    if (ASK.warned) return start();
+    confirmBox("Use your microphone?", "Voice input uses your browser's speech service. In Chrome, Edge and Safari your spoken question is sent to the browser's provider (Google, Microsoft or Apple) to be turned into text. Do not say personal or health details about a customer. Typing keeps everything on your server.", "Use voice", async () => { ASK.warned = true; start(); });
+  };
+  const mic = voiceOk ? h("button", { class: "btn ask-mic", type: "button", "aria-label": "Ask by voice", "data-tip": "Ask by voice", onclick: listen }, "Mic") : null;
+  const spk = h("button", { class: "btn sm ghost", type: "button", "aria-pressed": "false", hidden: !(ASK.info.voice && window.speechSynthesis), onclick: () => { ASK.speak = !ASK.speak; if (!ASK.speak && window.speechSynthesis) speechSynthesis.cancel(); spk.setAttribute("aria-pressed", ASK.speak ? "true" : "false"); spk.textContent = ASK.speak ? "Voice replies: on" : "Voice replies: off"; } }, "Voice replies: off");
+  const panel = h("section", { class: "ask-panel", role: "dialog", "aria-label": "Ask ClauseTrail", hidden: !ASK.open },
+    h("header", {}, h("b", {}, "Ask ClauseTrail"), h("span", { class: "pill", "data-tip": ASK.info.mode === "rules" ? "Questions are understood by built-in rules. Nothing leaves your server." : "A language model chooses which lookup to run. It never sees your records and never supplies a figure." }, ASK.info.mode === "rules" ? "rules mode" : "model: " + ASK.info.mode.split(":")[0]),
+      h("span", { class: "grow" }), spk, h("button", { class: "btn sm ghost", onclick: () => toggle(false), "aria-label": "Close" }, "Close")),
+    list, status, h("form", { class: "ask-form", onsubmit: (e) => { e.preventDefault(); send(); } }, input, mic, h("button", { class: "btn primary" }, "Ask")),
+    !ASK.info.voice ? h("div", { class: "small muted", style: "padding:0 14px 10px" }, speechIn() ? "Voice is switched off. An administrator can switch it on under Settings." : "Voice input is not available in this browser. Typing works everywhere.") : null);
+  const fab = h("button", { class: "ask-fab", "aria-expanded": ASK.open ? "true" : "false", onclick: () => toggle(!ASK.open) }, "Ask");
+  const toggle = (on) => { ASK.open = on; panel.hidden = !on; fab.hidden = on; fab.setAttribute("aria-expanded", on ? "true" : "false"); if (on) { draw(); input.focus(); } else if (window.speechSynthesis) speechSynthesis.cancel(); };
+  panel.addEventListener("keydown", (e) => { if (e.key === "Escape") toggle(false); });
+  ASK.el = h("div", { class: "ask" }, panel, fab);
+  fab.hidden = ASK.open;
+  document.body.append(ASK.el);
+  if (ASK.open) draw();
+}

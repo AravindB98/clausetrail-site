@@ -49,6 +49,7 @@ async function render() {
     else if (ROUTES[p[0]]) await ROUTES[p[0]](root, p[1], q);
     else put(root, empty("Page not found", "Choose a page from the menu."));
     annotate(document.getElementById("app"));
+    askMount();
   } catch (e) {
     if (G.me) put(root, h("div", { class: "card" }, empty("This page could not be shown", e.message)));
   }

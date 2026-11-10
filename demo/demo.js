@@ -55,12 +55,18 @@
     return { total: rows.length, groups: groups.slice(0, 3), months, added };
   }
 
-  async function handle(method, url) {
+  async function handle(method, url, body) {
     const D = await ready, u = new URL(url, location.origin), p = u.pathname, q = u.searchParams, full = p + u.search;
     if (method === "POST" && p === "/api/auth/login") return json({ ok: true });
     if (method === "POST" && p === "/api/auth/logout") return json({ ok: true });
     if (method === "POST" && p.startsWith("/api/auth/mfa")) return json({ error: "Two-step sign-in can be set up in the installed product. This demo is read-only." }, 403);
     if (method === "POST" && p === "/api/notifications/read") return json({ marked: 0 });
+    if (method === "POST" && p === "/api/assistant/ask") {
+      let q = ""; try { q = JSON.parse(body || "{}").question || ""; } catch (e) { /* ignore */ }
+      const key = q.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(), hit = D.snap.assistant_answers[key];
+      return json(hit || { understood: false, mode: "rules", suggestions: D.snap["/api/assistant"].examples.slice(0, 8),
+        answer: "This demo has no server, so it can only answer the example questions below. The installed product answers free-form questions about your own records, by text or voice." });
+    }
     if (method !== "GET") return json({ error: READ_ONLY }, 403);
     if (p === "/api/sampling/size") { const n = Number(q.get("population")), raw = Math.log(1 - Number(q.get("confidence") || 95) / 100) / Math.log(1 - Number(q.get("tolerable") || 5) / 100); return json({ size: n ? Math.min(n, Math.ceil(raw / (1 + (raw - 1) / n))) : 0 }); }
     if (D.snap[full] !== undefined) return json(D.snap[full]);
@@ -86,7 +92,7 @@
 
   window.fetch = (input, init) => {
     const url = typeof input === "string" ? input : input.url;
-    return url.startsWith("/api/") ? handle(((init && init.method) || "GET").toUpperCase(), url) : real(input, init);
+    return url.startsWith("/api/") ? handle(((init && init.method) || "GET").toUpperCase(), url, init && init.body) : real(input, init);
   };
   // Server-side downloads (Excel, PDF, files) do not exist on a static site.
   document.addEventListener("click", (ev) => {

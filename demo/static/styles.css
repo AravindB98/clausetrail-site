@@ -194,6 +194,15 @@ ol.enrol { padding-left: 20px; display: grid; gap: 14px; margin: 14px 0 0; } ol.
 .fw-list { display: grid; gap: 12px; max-width: 640px; } .fw h3 { font-size: 15px; color: var(--text); margin: 2px 0 6px; } .fw label.f { margin-top: 8px; } .fw .row { margin: 10px 0 4px; } .fw select, .fw textarea, .fw .btn { font-size: 16px; }
 @media (max-width: 700px) { .pair-bars, .div-bars { grid-template-columns: 1fr; gap: 3px; } .pair-bars > :nth-child(3n), .div-bars > :nth-child(3n) { margin-bottom: 8px; } }
 .fw-list { grid-template-columns: minmax(0, 1fr); } .fw .code { white-space: normal; } .fw h3 { overflow-wrap: anywhere; }
+/* Ask ClauseTrail */
+.ask-fab { position: fixed; right: 20px; bottom: 20px; z-index: 80; background: var(--teal); color: #fff; border: 0; border-radius: 22px; padding: 10px 20px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 6px 18px rgba(20,33,58,.28); } .ask-fab:hover { background: var(--teal-2); }
+.ask-panel { position: fixed; right: 20px; bottom: 20px; z-index: 81; width: min(430px, calc(100vw - 24px)); height: min(620px, calc(100vh - 40px)); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 40px rgba(20,33,58,.3); display: flex; flex-direction: column; overflow: hidden; } .ask-panel[hidden] { display: none; }
+.ask-panel header { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 14px; background: var(--ink); color: #fff; } .ask-panel header b { font: 600 15px var(--serif); } .ask-panel header .pill { font-size: 11.5px; padding: 1px 8px; border-radius: 20px; background: rgba(255,255,255,.14); color: #dfe6f1; } .ask-panel header .btn.ghost { color: #bfe9ec; }
+.ask-log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--paper); }
+.ask-msg { background: var(--surface); border: 1px solid var(--line); border-radius: 10px 10px 10px 2px; padding: 10px 12px; max-width: 94%; align-self: flex-start; font-size: 13.5px; } .ask-msg p { margin: 0; } .ask-msg.you { align-self: flex-end; background: var(--teal); border-color: var(--teal); color: #fff; border-radius: 10px 10px 2px 10px; }
+.ask-chart { margin-top: 10px; } .ask-chart h3 { margin-bottom: 6px; } .ask-rows { margin: 8px 0 0; padding-left: 18px; } .ask-rows li { margin-bottom: 3px; } .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; } .ask-chips .btn { white-space: normal; text-align: left; }
+.ask-status { padding: 0 14px; min-height: 18px; } .ask-form { display: flex; gap: 8px; padding: 8px 12px 12px; } .ask-form input { flex: 1; } .ask-mic.on { background: var(--critical); border-color: var(--critical); color: #fff; }
+@media (max-width: 700px) { .ask-panel { right: 0; bottom: 0; width: 100vw; height: 100vh; border-radius: 0; } } @media print { .ask { display: none; } }
 
 .demo-bar { position: fixed; left: 12px; bottom: 12px; z-index: 90; background: #14213a; color: #fff; padding: 7px 12px; border-radius: 6px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(20,33,58,.3); }
 .demo-bar a { color: #7fdde3; }
