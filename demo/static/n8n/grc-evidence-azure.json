@@ -1,0 +1,182 @@
+{
+  "name": "GRC evidence: Azure storage",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "8f780c76-6acd-5821-b46f-96c1eb765368",
+      "name": "Every day at 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ff309f3f-4397-5fae-b783-5dc22541f73f",
+              "name": "subscription_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "type": "string"
+            },
+            {
+              "id": "946df8a9-ae73-569f-a27d-98ae610807da",
+              "name": "grc_url",
+              "value": "https://grc.yourcompany.example",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ae0a700-4cae-5116-8042-88b07fc89bde",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "EDIT THESE VALUES. grc_url is the address of your GRC platform.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "=https://management.azure.com/subscriptions/{{ $('Settings').first().json.subscription_id }}/providers/Microsoft.Storage/storageAccounts?api-version=2023-01-01",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "nextURL": "={{ $response.body.nextLink }}",
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !( $response.body.nextLink) }}",
+              "limitPagesFetched": true,
+              "maxRequests": 100
+            }
+          }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api"
+      },
+      "id": "8c40e99b-5140-59f7-9059-11e95909de1d",
+      "name": "Storage accounts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Each input item is one page. Keep only the settings the checks test.\nconst sub = $('Settings').first().json.subscription_id, items = [];\nfor (const page of $input.all()) for (const a of (page.json.value || [])) { const p = a.properties || {};\n  // A missing allowBlobPublicAccess means the older default, which permitted public access.\n  items.push({ account: sub.slice(0, 8) + '/' + a.name, location: a.location, https_only: !!p.supportsHttpsTrafficOnly, public_blob_access: p.allowBlobPublicAccess !== false, minimum_tls: p.minimumTlsVersion || 'not set' }); }\nif (!items.length) throw new Error('Azure returned no storage accounts. Check the subscription ID and that the app has the Reader role.');\nreturn [{ json: { checks: ['azure_storage_https_only', 'azure_storage_no_public_access'], source_ref: 'Azure subscription ' + sub + ' (n8n)', collected_at: new Date().toISOString().slice(0, 19), items } }];"
+      },
+      "id": "c9cf9c63-326e-5578-8d8a-3b788edc3a52",
+      "name": "Shape accounts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.grc_url }}/api/integrations/collect",
+        "options": {},
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "763ca63b-3e0a-51e2-a97e-55dbd657a3df",
+      "name": "Send to GRC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## GRC evidence: Azure storage\n1. Edit **Settings**. Use one copy of this workflow per subscription.\n2. On *Storage accounts* choose an **OAuth2 API** credential: Grant Type *Client Credentials*, Access Token URL `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token`, Scope `https://management.azure.com/.default`. Give the app registration the **Reader** role on the subscription and nothing else.\n3. On *Send to GRC* choose a **Header Auth** credential: Name `Authorization`, Value `Bearer <GRC API token>`.\n4. Run once with **Execute workflow**, then switch it to Active.\n\nFeeds the checks `azure_storage_https_only` and `azure_storage_no_public_access`. Read-only.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "da108603-ce93-555a-8083-88637dcbad69",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Every day at 06:00": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Storage accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Storage accounts": {
+      "main": [
+        [
+          {
+            "node": "Shape accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape accounts": {
+      "main": [
+        [
+          {
+            "node": "Send to GRC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

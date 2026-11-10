@@ -1,0 +1,218 @@
+{
+  "name": "GRC evidence: Jira",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "8f780c76-6acd-5821-b46f-96c1eb765368",
+      "name": "Every day at 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "faf21e32-cf00-5b56-91b2-fe51a80ec43f",
+              "name": "jira_url",
+              "value": "https://yourcompany.atlassian.net",
+              "type": "string"
+            },
+            {
+              "id": "1007fbe2-95c3-5a08-a2d9-28dee9e6f12f",
+              "name": "approver_field",
+              "value": "customfield_10042",
+              "type": "string"
+            },
+            {
+              "id": "1d4973f4-7b4f-5371-8a0b-3321e43bd3b9",
+              "name": "change_jql",
+              "value": "issuetype = Change AND statusCategory = Done AND resolved >= -30d",
+              "type": "string"
+            },
+            {
+              "id": "8f1d3807-c697-590e-97e9-0060b9724cf7",
+              "name": "security_jql",
+              "value": "labels = security AND priority in (Highest, High) AND statusCategory != Done",
+              "type": "string"
+            },
+            {
+              "id": "946df8a9-ae73-569f-a27d-98ae610807da",
+              "name": "grc_url",
+              "value": "https://grc.yourcompany.example",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ae0a700-4cae-5116-8042-88b07fc89bde",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "EDIT THESE VALUES. grc_url is the address of your GRC platform.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.jira_url }}/rest/api/3/search/jql?maxResults=100&fields=issuetype,resolutiondate,{{ $('Settings').first().json.approver_field }}&jql={{ encodeURIComponent($('Settings').first().json.change_jql) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "70072c86-c222-58b9-9652-debc42bf0d4d",
+      "name": "Completed changes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.jira_url }}/rest/api/3/search/jql?maxResults=100&fields=priority,created&jql={{ encodeURIComponent($('Settings').first().json.security_jql) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "39a322c2-46b3-5826-8bd1-1f51e3f5564c",
+      "name": "Open security issues",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Only issue keys and the tested values leave Jira. Summaries and descriptions are not sent.\nconst s = $('Settings').first().json, out = [];\nconst changes = ($('Completed changes').first().json.issues || []).map(i => ({ issue: i.key, type: (i.fields.issuetype || {}).name, approved: !!i.fields[s.approver_field], resolved: (i.fields.resolutiondate || '').slice(0, 10) }));\nif (!changes.length) throw new Error('Jira returned no completed changes. Check change_jql and the account\\'s project permissions.');\nout.push({ json: { checks: ['jira_change_approved'], source_ref: 'Jira ' + s.jira_url + ' (n8n)', collected_at: new Date().toISOString().slice(0, 19), items: changes } });\nconst sec = ($('Open security issues').first().json.issues || []).map(i => ({ issue: i.key, priority: (i.fields.priority || {}).name, age_days: Math.floor((Date.now() - new Date(i.fields.created).getTime()) / 86400000) }));\n// No open high-priority security issues is a good result, but an empty data set is never sent as a pass.\nif (sec.length) out.push({ json: { checks: ['jira_security_overdue'], source_ref: 'Jira ' + s.jira_url + ' (n8n)', collected_at: new Date().toISOString().slice(0, 19), items: sec } });\nreturn out;"
+      },
+      "id": "1668337c-6ae1-5ee2-8391-a40976f86dc3",
+      "name": "Shape issues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.grc_url }}/api/integrations/collect",
+        "options": {},
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "763ca63b-3e0a-51e2-a97e-55dbd657a3df",
+      "name": "Send to GRC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## GRC evidence: Jira Cloud\n1. Edit **Settings**: your site address, the field that holds a change's approver, and the two searches if yours differ.\n2. On the two Jira nodes choose a **Header Auth** credential: Name `Authorization`, Value `Basic <base64 of email:api-token>`.\n3. On *Send to GRC* choose a **Header Auth** credential: Name `Authorization`, Value `Bearer <GRC API token>`.\n4. Run once with **Execute workflow**, then switch it to Active.\n\nReads the first 100 results of each search. Feeds the checks `jira_change_approved` and `jira_security_overdue`. Read-only.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "3926359a-fc87-576d-a23a-74e77504a972",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Every day at 06:00": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Completed changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Completed changes": {
+      "main": [
+        [
+          {
+            "node": "Open security issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open security issues": {
+      "main": [
+        [
+          {
+            "node": "Shape issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape issues": {
+      "main": [
+        [
+          {
+            "node": "Send to GRC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

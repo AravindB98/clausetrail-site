@@ -1,0 +1,189 @@
+{
+  "name": "GRC evidence: Google Workspace",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "8f780c76-6acd-5821-b46f-96c1eb765368",
+      "name": "Every day at 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e5e7f3fb-9331-5f07-b00e-2c25fa9a6c8b",
+              "name": "customer",
+              "value": "my_customer",
+              "type": "string"
+            },
+            {
+              "id": "946df8a9-ae73-569f-a27d-98ae610807da",
+              "name": "grc_url",
+              "value": "https://grc.yourcompany.example",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ae0a700-4cae-5116-8042-88b07fc89bde",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "EDIT THESE VALUES. grc_url is the address of your GRC platform.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "=https://admin.googleapis.com/admin/directory/v1/users?customer={{ $('Settings').first().json.customer }}&maxResults=500&projection=basic",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "pageToken",
+                    "value": "={{ $response.body.nextPageToken }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body.nextPageToken }}",
+              "limitPagesFetched": true,
+              "maxRequests": 100
+            }
+          }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api"
+      },
+      "id": "b8724860-0e3e-5e9c-b5c3-9d890cd8f865",
+      "name": "Users",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Each input item is one page. Keep only what the checks test.\nconst items = [];\nfor (const page of $input.all()) for (const u of (page.json.users || [])) items.push({ user: u.primaryEmail, suspended: !!(u.suspended || u.archived), is_admin: !!(u.isAdmin || u.isDelegatedAdmin), two_step_enrolled: !!u.isEnrolledIn2Sv, two_step_enforced: !!u.isEnforcedIn2Sv });\nif (!items.length) throw new Error('Google returned no users. Check the credential and its scope.');\nreturn [{ json: { checks: ['google_2sv_enrolled', 'google_admin_2sv'], source_ref: 'Google Workspace ' + $('Settings').first().json.customer + ' (n8n)', collected_at: new Date().toISOString().slice(0, 19), items } }];"
+      },
+      "id": "21f3fd29-cf61-59cd-a3fc-b8a1148f7a2e",
+      "name": "Shape users",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.grc_url }}/api/integrations/collect",
+        "options": {},
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "763ca63b-3e0a-51e2-a97e-55dbd657a3df",
+      "name": "Send to GRC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## GRC evidence: Google Workspace\n1. Edit **Settings**.\n2. On *Users* choose an **OAuth2 API** credential for Google with the single scope `https://www.googleapis.com/auth/admin.directory.user.readonly`, authorised by a Workspace administrator.\n3. On *Send to GRC* choose a **Header Auth** credential: Name `Authorization`, Value `Bearer <GRC API token>`.\n4. Run once with **Execute workflow**, then switch it to Active.\n\nFeeds the checks `google_2sv_enrolled` and `google_admin_2sv`. Read-only.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "806db9c2-b1ac-5f05-9c15-565a6f549341",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Every day at 06:00": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Users": {
+      "main": [
+        [
+          {
+            "node": "Shape users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape users": {
+      "main": [
+        [
+          {
+            "node": "Send to GRC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

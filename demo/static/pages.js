@@ -327,7 +327,8 @@ P.reports = async (root, id) => {
         h("td", {}, ["xlsx", "csv", "pdf"].map((f) => h("a", { class: "btn sm", style: "margin-right:6px", href: `/api/reports/${r.id}?fmt=${f}` }, f === "xlsx" ? "Excel" : f.toUpperCase())))))))));
   }
   const r = await GET(`/api/reports/${id}`);
-  put(root, h("div", { class: "crumb" }, h("a", { href: "#/reports" }, "Reports"), " / ", r.id), pageHead(r.title, r.summary, ["xlsx", "csv", "pdf"].map((f) => h("a", { class: "btn", href: `/api/reports/${r.id}?fmt=${f}` }, f === "xlsx" ? "Excel" : f.toUpperCase())), h("button", { class: "btn", onclick: () => print() }, "Print")),
+  put(root, h("div", { class: "crumb" }, h("a", { href: "#/reports" }, "Reports"), " / ", r.id), pageHead(r.title, r.summary, ["xlsx", "csv", "pdf"].map((f) => h("a", { class: "btn", href: `/api/reports/${r.id}?fmt=${f}` }, f === "xlsx" ? "Excel" : f.toUpperCase())), h("button", { class: "btn", onclick: () => print() }, "Print"),
+      h("button", { class: "btn", "data-tip": "For large reports. The file is prepared on the server while you carry on working, and you are notified when it is ready.", onclick: act(async () => { await POST(`/api/reports/${r.id}/generate`, { fmt: "xlsx" }); toast("Preparing the Excel file. You will be notified when it is ready under Reports, Report downloads."); }) }, "Prepare in background")),
     reportChart(r),
     r.rows.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, r.columns.map((c) => h("th", {}, c)))), h("tbody", {}, r.rows.map((row) => h("tr", {}, row.map((v) => h("td", { class: typeof v === "number" ? "num" : "" }, v === null || v === undefined ? "" : typeof v === "number" ? fmt.num(v) : toneOf(v) ? chip(v) : String(v)))))))) : h("div", { class: "card" }, empty("No data for this report yet", "")));
 };

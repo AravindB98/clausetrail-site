@@ -1,0 +1,210 @@
+{
+  "name": "GRC evidence: Okta",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "8f780c76-6acd-5821-b46f-96c1eb765368",
+      "name": "Every day at 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fc856ce1-ebe3-52a4-b983-861d7b40608b",
+              "name": "okta_url",
+              "value": "https://yourcompany.okta.com",
+              "type": "string"
+            },
+            {
+              "id": "946df8a9-ae73-569f-a27d-98ae610807da",
+              "name": "grc_url",
+              "value": "https://grc.yourcompany.example",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ae0a700-4cae-5116-8042-88b07fc89bde",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "EDIT THESE VALUES. grc_url is the address of your GRC platform.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.okta_url }}/api/v1/users?limit=200",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "nextURL": "={{ ($response.headers.link || '').split(',').map(p => p.match(/<([^>]+)>;\\s*rel=\"next\"/)).filter(Boolean).map(m => m[1])[0] }}",
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !( ($response.headers.link || '').split(',').map(p => p.match(/<([^>]+)>;\\s*rel=\"next\"/)).filter(Boolean).map(m => m[1])[0]) }}",
+              "limitPagesFetched": true,
+              "maxRequests": 100
+            }
+          }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "b8724860-0e3e-5e9c-b5c3-9d890cd8f865",
+      "name": "Users",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.okta_url }}/api/v1/users/{{ $json.id }}/factors",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "a76f8011-84c4-5280-b3dd-9b9d1b482fec",
+      "name": "Factors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per user, with only what the checks test. Factors arrive in the same order as users.\nconst users = $('Users').all().map(i => i.json).filter(u => u && u.id);\nif (!users.length) throw new Error('Okta returned no users. Check the address and the token.');\nconst now = Date.now(), days = s => s ? Math.floor((now - new Date(s).getTime()) / 86400000) : null;\nconst byUser = {};\nfor (const it of $input.all()) { const idx = it.pairedItem ? it.pairedItem.item : 0; (byUser[idx] = byUser[idx] || []).push(it.json); }\nconst items = users.map((u, i) => { const last = days(u.lastLogin); return { user: (u.profile || {}).login, status: u.status,\n  factors_enrolled: (byUser[i] || []).filter(f => f && f.status === 'ACTIVE').length, days_since_login: last === null ? days(u.created) : last, never_signed_in: last === null }; });\nreturn [{ json: { checks: ['okta_mfa_enrolled', 'okta_inactive_accounts'], source_ref: 'Okta ' + $('Settings').first().json.okta_url + ' (n8n)', collected_at: new Date().toISOString().slice(0, 19), items } }];"
+      },
+      "id": "21f3fd29-cf61-59cd-a3fc-b8a1148f7a2e",
+      "name": "Shape users",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Settings').first().json.grc_url }}/api/integrations/collect",
+        "options": {},
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "763ca63b-3e0a-51e2-a97e-55dbd657a3df",
+      "name": "Send to GRC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## GRC evidence: Okta\n1. Edit **Settings**.\n2. On *Users* and *Factors* choose a **Header Auth** credential: Name `Authorization`, Value `SSWS <okta api token>`. Create the token as a Read-only Administrator.\n3. On *Send to GRC* choose a **Header Auth** credential: Name `Authorization`, Value `Bearer <GRC API token>` (limited to the register `evidence`).\n4. Run once with **Execute workflow**, then switch it to Active.\n\nFeeds the checks `okta_mfa_enrolled` and `okta_inactive_accounts`. Read-only.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "89ce194a-7774-55e4-9ced-ad3f04b83d18",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Every day at 06:00": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Users": {
+      "main": [
+        [
+          {
+            "node": "Factors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Factors": {
+      "main": [
+        [
+          {
+            "node": "Shape users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape users": {
+      "main": [
+        [
+          {
+            "node": "Send to GRC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

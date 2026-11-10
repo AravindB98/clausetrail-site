@@ -259,3 +259,34 @@ ROUTES.review = async (root) => {
       { label: "Qualification", key: "reviewer_qualification" }, { label: "Date", render: (s) => fmt.date(s.review_date) }, { label: "Signed", render: (s) => (s.signed ? chip("Verified") : chip("Pending")) }], d.signoffs)
       : h("div", { class: "card" }, empty("No sign-offs recorded yet", "When a qualified person has reviewed the content, record their sign-off here.")));
 };
+
+/* ── connectors ── */
+ROUTES.connectors = async (root) => {
+  const d = await GET("/api/connectors"), admin = can("admin", 4);
+  const runBtn = (c) => {
+    const needsFile = c.source_type === "File upload" || c.source_type === "FHIR claim bundle (upload)";
+    const show = (r) => modal("Connector run finished", h("div", { class: "stack" }, h("p", {}, `${r.created} created, ${r.updated} updated, ${r.errors.length} rejected` + (c.source_type === "Drop folder" ? `, from ${r.files} file(s).` : ".")),
+      r.unmatched_columns.length ? h("p", { class: "note" }, "Columns with no matching field were skipped: " + r.unmatched_columns.join(", ") + ". Add them to the field map if they are needed.") : null,
+      r.errors.length ? simpleTable([{ label: "Row", key: "row" }, { label: "Problem", key: "error" }], r.errors.slice(0, 50)) : null), [{ label: "Done", cls: "primary", run: () => render() }]);
+    const input = h("input", { type: "file", accept: ".csv,.xlsx,.json", hidden: true, onchange: act(async () => { const fd = new FormData(); fd.append("file", input.files[0]); show(await api("POST", `/api/connectors/${c.id}/run`, fd)); }) });
+    return [input, h("button", { class: "btn primary sm", onclick: needsFile ? () => input.click() : act(async () => show(await POST(`/api/connectors/${c.id}/run`))) }, needsFile ? "Choose file and run" : "Run now")];
+  };
+  const secretBtn = (c) => h("button", { class: "btn sm", onclick: () => { const v = h("input", { type: "password", autocomplete: "off" });
+    modal(`Credential for ${c.name}`, h("label", { class: "f" }, h("span", {}, `Value sent in the ${c.auth_header_name || "Authorization"} header, for example "Bearer abc123". It is stored encrypted and cannot be read back. Leave empty to remove it.`), v),
+      [{ label: "Cancel", run: () => {} }, { label: "Save credential", cls: "primary", run: async () => { await POST(`/api/connectors/${c.id}/secret`, { value: v.value }); toast("Credential saved"); render(); } }], true); } }, c.secret_set ? "Replace credential" : "Set credential");
+  put(root, pageHead("Connectors", "Bring records in from your claims, policy or other core systems without writing code. A connector says where the data comes from, which register it feeds, and how the source's column names map to the register's fields.",
+      admin ? h("button", { class: "btn primary", onclick: act(() => recordForm("connector", null, { active: true, schedule: "Manual" }, () => render())) }, "New connector") : null),
+    h("div", { class: "grid g3", style: "margin-bottom:16px" },
+      card("Four ways in", h("dl", { class: "dl" }, h("div", {}, h("dt", {}, "File upload"), h("dd", {}, "Choose a CSV, Excel or JSON export when you run it.")), h("div", {}, h("dt", {}, "Drop folder"), h("dd", {}, "Your system writes files to a folder on this server. They are picked up on a schedule and moved to 'processed'.")),
+        h("div", {}, h("dt", {}, "REST pull"), h("dd", {}, "The connector fetches JSON from an https address on a schedule.")), h("div", {}, h("dt", {}, "FHIR claim bundle"), h("dd", {}, "Claims in the FHIR format used by the National Health Claims Exchange (NHCX), by upload or pull.")))),
+      card("Field map and value map", h("p", { class: "small" }, "The field map renames the source's columns to this register's field names. The value map translates codes."),
+        h("pre", { class: "report small" }, 'Field map\n{ "Claim No": "claim_number",\n  "Regd On": "registration_date" }\n\nValue map\n{ "claim_type": { "CL": "Cashless",\n                  "RI": "Reimbursement" } }')),
+      card("Reading scanned documents", h("p", {}, d.ocr ? chip("Active") : chip("Not set"), d.ocr ? " OCR is available on this server." : " OCR is not available on this server."),
+        h("p", { class: "small muted" }, "Scanned circulars and images attached to a regulation are read with OCR, so the AI assistant can search them and suggest obligations. OCR is included in the Docker set-up. Without Docker, install Tesseract on the server."))),
+    d.connectors.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ["Connector", "Source", "Feeds", "Schedule", "Last run", "Result", ""].map((t) => h("th", {}, t)))),
+      h("tbody", {}, d.connectors.map((c) => h("tr", {}, h("td", {}, h("a", { href: `#/e/connector/${c.id}` }, c.name), c.active ? null : h("span", { class: "muted small" }, " (inactive)"), c.folder ? h("div", { class: "code", style: "white-space:normal;word-break:break-all" }, c.folder) : null),
+        h("td", {}, c.source_type), h("td", {}, (ent(c.target_entity) || { plural: c.target_entity }).plural), h("td", {}, c.schedule || "Manual"), h("td", { class: "nowrap" }, fmt.dt(c.last_run)),
+        h("td", {}, c.last_result === "Failed" ? [chip("Failed"), h("div", { class: "small muted" }, c.last_error)] : c.last_result || ""),
+        h("td", { class: "nowrap" }, admin ? [runBtn(c), " ", c.source_type.includes("pull") || c.source_type === "REST pull" ? secretBtn(c) : null] : null)))))) :
+      h("div", { class: "card" }, empty("No connectors yet", admin ? "Create one for each feed from a core system. Start with a file upload to check the mapping, then switch it to a drop folder or a REST pull." : "An administrator can add connectors.")));
+};
