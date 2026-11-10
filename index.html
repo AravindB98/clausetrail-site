@@ -39,6 +39,10 @@ table { width:100%; border-collapse:collapse; font-size:15px; background:var(--s
 footer { background:var(--ink); color:#93a3bb; padding:30px 0; font-size:14px; border-top:1px solid #30456b; } footer a { color:#c6d1e2; }
 @media (max-width:860px) { .modules, .steps { grid-template-columns:1fr; } .feature, .decide { grid-template-columns:1fr; gap:22px; } .feature.flip > div:first-child { order:0; } .road { grid-template-columns:1fr; } .road > div { border-left:0; border-top:1px solid var(--line); } .decide ul { columns:1; } nav a:not(.name):not(.keep) { display:none; } section { padding:56px 0; } }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+h3.group { font:600 15px var(--sans); color:var(--muted); letter-spacing:0; margin:34px 0 4px; } h3.group:first-of-type { margin-top:0; }
+.road.three { grid-template-columns:repeat(3,minmax(0,1fr)); } .road.three > div { border-top:1px solid var(--line); margin-top:-1px; } .road > div.next { background:var(--surface); } .road .tag { display:inline-block; font-size:12.5px; font-weight:600; padding:1px 9px; border-radius:20px; background:var(--teal); color:#fff; margin-bottom:8px; } .road .next .tag { background:var(--saffron-soft); color:#8a5a00; }
+footer .by { color:#dfe6f1; font-size:15px; margin-bottom:6px; } footer .by a { color:#7fdde3; }
+@media (max-width:860px) { .road.three { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -57,7 +61,8 @@ footer { background:var(--ink); color:#93a3bb; padding:30px 0; font-size:14px; b
 </div></header>
 
 <section id="features"><div class="wrap">
-  <div class="head"><h2>Twelve modules, one chain of records</h2><p class="lede">Every record links to the next, so a regulator's question can be followed from the clause to the evidence and the corrective action.</p></div>
+  <div class="head"><h2>Features</h2><p class="lede">Twelve modules that share one chain of records, so a regulator's question can be followed from the clause to the evidence and the corrective action. Around them, the tools that make the records easy to feed, question and trust.</p></div>
+  <h3 class="group">The twelve modules</h3>
   <dl class="modules">
     <div><dt>Regulatory compliance</dt><dd>17 frameworks, clause and obligation registers, applicability by legal entity, compliance calendar, regulatory change tracking.</dd></div>
     <div><dt>Enterprise risk</dt><dd>Likelihood and impact scoring, residual risk, appetite thresholds, heatmap, treatment plans, key risk indicators.</dd></div>
@@ -71,6 +76,24 @@ footer { background:var(--ink); color:#93a3bb; padding:30px 0; font-size:14px; b
     <div><dt>Governance</dt><dd>Board and committees, meetings, decisions and actions, policy documents.</dd></div>
     <div><dt>Policy administration and finance</dt><dd>Products, wordings, underwriting exceptions, reconciliations, segregation of duties.</dd></div>
     <div><dt>Training and competency</dt><dd>Programmes, online assessments, competency requirements and gaps by role.</dd></div>
+  </dl>
+  <h3 class="group">Across every module</h3>
+  <dl class="modules">
+    <div><dt>Ask ClauseTrail</dt><dd>Plain-language questions by text or voice, answered from your records with a chart and links. Read-only.</dd></div>
+    <div><dt>Charts everywhere</dt><dd>A chart strip above every register, 12-month trends, a chart on every report, heatmaps and indicator meters.</dd></div>
+    <div><dt>Plain-language terms</dt><dd>69 short forms and specialist words with their full form and a two-line explanation, wherever they appear.</dd></div>
+    <div><dt>Automation studio</dt><dd>Triggers, conditions, tasks, multi-level approvals and escalations, with 20 starter workflows and nine n8n workflows.</dd></div>
+    <div><dt>Governed AI agents</dt><dd>Seven agents that draft and suggest. A person approves every output. Works with no AI subscription.</dd></div>
+    <div><dt>Evidence collectors</dt><dd>Read-only collectors for GitHub, Microsoft Entra ID, AWS, Google Workspace, Azure, Okta and Jira feeding 15 fixed-rule checks.</dd></div>
+    <div><dt>Connectors</dt><dd>File upload, drop folder, REST pull and FHIR claim bundles, with column and code mapping and no programming.</dd></div>
+    <div><dt>Scanned documents</dt><dd>OCR (Optical Character Recognition) reads scanned circulars and images so they can be searched.</dd></div>
+    <div><dt>Regulatory watch</dt><dd>Official pages are checked on a schedule. A new document link is raised for a compliance officer to assess.</dd></div>
+    <div><dt>Outlook</dt><dd>Trend projections, a 60-day look-ahead and the risks under most pressure, each with its working shown.</dd></div>
+    <div><dt>Audit sampling and fieldwork</dt><dd>Reproducible random, stratified and monetary-unit samples, and a phone screen for auditors that works offline.</dd></div>
+    <div><dt>Hospital network analytics</dt><dd>Volume, cost index, exception and rejection rates per hospital, with outliers flagged for review.</dd></div>
+    <div><dt>Dashboards and reports</dt><dd>Executive, department, compliance and risk dashboards, 10 indicators with their rules, 15 reports, background preparation for large ones.</dd></div>
+    <div><dt>Access and sign-in</dt><dd>15 roles, department and branch limits, segregation of duties, two-step sign-in, single sign-on and HTTPS.</dd></div>
+    <div><dt>Audit trail and resilience</dt><dd>A tamper-evident record of every action, version history for every record, and a two-copy set-up behind one address.</dd></div>
   </dl>
 </div></section>
 
@@ -143,13 +166,16 @@ footer { background:var(--ink); color:#93a3bb; padding:30px 0; font-size:14px; b
 </div></div></section>
 
 <section id="roadmap"><div class="wrap">
-  <div class="head"><h2>Roadmap</h2><p class="lede">Every item on the original roadmap is delivered. Under each release is what remains open before a pilot.</p></div>
-  <div class="road">
-    <div><p class="when">Delivered, November 2026</p><h3>1.0 and 1.1</h3><ul><li>All twelve modules, dashboards, 15 reports</li><li>Automation studio with 20 starter workflows</li><li>Seven governed AI agents</li><li>Evidence collectors for GitHub, Entra ID and AWS</li><li>Automated control checks</li><li>Cross-framework mapping and coverage</li><li>Five n8n workflows</li></ul></div>
-    <div><p class="when">Delivered, November 2026</p><h3>1.2 Pilot readiness</h3><ul><li>Two-step sign-in and single sign-on</li><li>HTTPS included in the Docker set-up</li><li>Start files and Docker set-up checked on Linux, Windows and macOS machines on every change</li><li>Verify mode for a collector's first run on a real account</li><li>Content review page with signed sign-offs</li><li>Charts above every register and 12-month trends</li><li>Every short form explained in plain language</li></ul><p class="open">Still open: a penetration test, a compliance professional's review of the starter content, and single sign-on and collectors against live accounts.</p></div>
-    <div><p class="when">Delivered, November 2026</p><h3>1.3 Deeper integration</h3><ul><li>Collectors for Google Workspace, Azure, Okta and Jira</li><li>Configurable connectors: file, drop folder, REST pull</li><li>FHIR claim bundles as used by the National Health Claims Exchange</li><li>OCR for scanned circulars</li><li>Branch-level access</li><li>Large reports prepared in the background</li></ul><p class="open">Still open: connectors for a named vendor's system, and runs against live accounts.</p></div>
-    <div><p class="when">Delivered, November 2026</p><h3>2.0 Insight</h3><ul><li>Regulatory watch on official pages</li><li>Outlook: trends, 60-day look-ahead, risks under pressure</li><li>Reproducible audit sampling</li><li>Hospital network analytics</li><li>Fieldwork on a phone, online or offline</li><li>Two-copy set-up behind one address</li><li>2.1: Ask ClauseTrail, a text and voice assistant</li></ul><p class="open">Still open: a native mobile app, a replicated database, and the watch against live regulator sites.</p></div>
+  <div class="head"><h2>Roadmap</h2><p class="lede">Five releases are delivered, covering every item on the original roadmap. What comes next depends on people and live systems more than on code, and on what pilot users ask for.</p></div>
+  <div class="road three">
+    <div><span class="tag">Delivered</span><h3>1.0 and 1.1 Foundation</h3><ul><li>All twelve modules, dashboards, 15 reports</li><li>Automation studio with 20 starter workflows</li><li>Seven governed AI agents</li><li>Evidence collectors for GitHub, Entra ID and AWS</li><li>Automated control checks and framework coverage</li></ul></div>
+    <div><span class="tag">Delivered</span><h3>1.2 Pilot readiness</h3><ul><li>Two-step sign-in and single sign-on</li><li>HTTPS in the Docker set-up</li><li>Checked on Linux, Windows and macOS machines on every change</li><li>Content review with signed sign-offs</li><li>Charts above every register; every short form explained</li></ul></div>
+    <div><span class="tag">Delivered</span><h3>1.3 Deeper integration</h3><ul><li>Collectors for Google Workspace, Azure, Okta and Jira</li><li>Connectors: file, drop folder, REST pull</li><li>FHIR claim bundles (National Health Claims Exchange)</li><li>OCR for scanned circulars</li><li>Branch-level access; background reports</li></ul></div>
+    <div><span class="tag">Delivered</span><h3>2.0 Insight</h3><ul><li>Regulatory watch on official pages</li><li>Outlook: trends, look-ahead, risks under pressure</li><li>Reproducible audit sampling</li><li>Hospital network analytics</li><li>Fieldwork on a phone, online or offline</li><li>Two-copy set-up behind one address</li></ul></div>
+    <div><span class="tag">Delivered</span><h3>2.1 Ask ClauseTrail</h3><ul><li>Plain-language questions by text or voice</li><li>Answers with a chart and links to the records</li><li>Read-only, within each person's access</li><li>Works with no AI subscription</li></ul></div>
+    <div class="next"><span class="tag">Next: before a pilot</span><h3>Proving it on live systems</h3><ul><li>Independent penetration test</li><li>Review of the starter content by a compliance professional</li><li>Live runs: single sign-on, each collector, the regulatory watch, voice</li><li>Connectors for the claims and policy systems pilot users name</li><li>Load test, and a run with a replicated database</li></ul></div>
   </div>
+  <p class="lede" style="font-size:15.5px;margin-top:22px">Ideas under consideration, not commitments: voice recognition that stays on your own server, a native mobile app, Hindi and regional-language screens, and content packs for other regulators.</p>
 </div></section>
 
 <section class="tint" id="install"><div class="wrap">
@@ -165,6 +191,6 @@ footer { background:var(--ink); color:#93a3bb; padding:30px 0; font-size:14px; b
       <li>Every change is tested on Linux, Windows and macOS machines, including the Docker set-up over HTTP and HTTPS. Not yet tested: Docker Desktop on a Windows or Mac desktop, single sign-on against a live identity provider, and the collectors against real accounts.</li></ul></div>
 </div></section>
 
-<footer><div class="wrap">ClauseTrail, India Edition, version 2.1. Built from the India Edition 2026 requirements. The demo data is fictional.</div></footer>
+<footer><div class="wrap"><p class="by">Developed by <a href="https://github.com/AravindB98">Aravind Balaji</a></p>ClauseTrail, India Edition, version 2.1. Built from the India Edition 2026 requirements. The demo data is fictional.<br>&copy; 2026 Aravind Balaji. All rights reserved. ClauseTrail is proprietary software: see the <a href="https://github.com/AravindB98/clausetrail-site/blob/main/LICENSE">licence</a> for permitted use.</div></footer>
 </body>
 </html>
